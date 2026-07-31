@@ -22,7 +22,7 @@ if errorlevel 1 (
 )
 
 if not exist "client\node_modules" (
-    echo Installing client dependencies (first run only)...
+    echo Installing client dependencies - first run only
     pushd client
     call npm install
     popd

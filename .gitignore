@@ -1,0 +1,21 @@
+# .NET
+server/**/bin/
+server/**/obj/
+*.db
+*.db-shm
+*.db-wal
+
+# Node / Vite
+client/node_modules/
+client/dist/
+client/.vite/
+
+# Editor / tooling
+.vs/
+.vscode/
+*.user
+.claude/settings.local.json
+
+# OS
+Thumbs.db
+.DS_Store

@@ -3,6 +3,14 @@ using UpgradePlanner.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render (and most PaaS hosts) assign a port at runtime via $PORT and expect
+// the app to bind to it directly instead of using appsettings/launchSettings.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -12,12 +20,16 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
-const string DevClientCorsPolicy = "DevClient";
+const string ClientCorsPolicy = "Client";
+var allowedOrigins = builder.Configuration["AllowedOrigins"]
+    ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    ?? ["http://localhost:5176"];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(DevClientCorsPolicy, policy =>
+    options.AddPolicy(ClientCorsPolicy, policy =>
     {
-        policy.WithOrigins("http://localhost:5176")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -29,17 +41,21 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+
+    if (builder.Configuration["SeedDemoData"] == "true")
+    {
+        DemoSeeder.Reseed(db);
+    }
 }
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-
-app.UseCors(DevClientCorsPolicy);
+app.UseCors(ClientCorsPolicy);
 
 app.UseAuthorization();
 

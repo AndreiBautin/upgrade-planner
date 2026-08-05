@@ -104,6 +104,15 @@ button, input, select, textarea {
 
 /* Layout */
 
+.demo-banner {
+  background: var(--accent);
+  color: white;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+
 .app-nav {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
 import type { UpgradeDto, UpsertUpgradeInput } from './types'
 
-const BASE = '/api/upgrades'
+const API_ORIGIN = import.meta.env.VITE_API_BASE_URL ?? ''
+const BASE = `${API_ORIGIN}/api/upgrades`
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {

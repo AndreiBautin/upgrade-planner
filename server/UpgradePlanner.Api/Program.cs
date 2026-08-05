@@ -3,8 +3,8 @@ using UpgradePlanner.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Render (and most PaaS hosts) assign a port at runtime via $PORT and expect
-// the app to bind to it directly instead of using appsettings/launchSettings.
+// Azure App Service (and most PaaS hosts) assign a port at runtime via $PORT
+// and expect the app to bind to it directly instead of using launchSettings.
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrEmpty(port))
 {

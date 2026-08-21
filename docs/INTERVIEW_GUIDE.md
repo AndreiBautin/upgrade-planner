@@ -349,7 +349,7 @@ feature list.
 | --- | --- |
 | "It's production-ready" | It's a deployed demo with no auth. Say what's deployed, tested, and documented — and what isn't. |
 | "It's secure" / "CORS secures the API" | CORS is a browser control. Claiming it as a defence invites the follow-up you can't answer. |
-| "It's fully tested" / quoting a coverage number | 175 tests, and you can name exactly what isn't covered. That's stronger. |
+| "It's fully tested" / quoting a coverage number | 177 tests, and you can name exactly what isn't covered. That's stronger. |
 | "It scales" | It loads every row on every request. You know where it breaks — say that instead. |
 | "I used Clean Architecture / DDD" | You used a controller, a service, and a DbContext. Describing it accurately is more impressive than borrowing a label. |
 | "The demo resets every hour" | It resets on cold start, after 15 minutes idle. Don't invent a schedule that doesn't exist. |

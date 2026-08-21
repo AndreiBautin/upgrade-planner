@@ -98,6 +98,69 @@ describe('label lookups', () => {
 })
 
 describe('toUpsertInput', () => {
+  it('normalises a row that carries purchase details without being purchased', () => {
+    // Real rows written before the API enforced state coherence look like this.
+    // The purchase inputs are hidden whenever status is not Purchased, so
+    // submitting the stale value would be rejected for a field the user cannot
+    // see - including on a drag-to-reorder they never associated with it.
+    const stale = {
+      id: 1,
+      title: 'Something',
+      description: null,
+      category: UpgradeCategory.Home,
+      priority: 50,
+      estimatedCost: null,
+      status: UpgradeStatus.Idea,
+      notes: null,
+      productLink: null,
+      prerequisiteUpgradeId: null,
+      prerequisiteTitle: null,
+      purchasedDate: '2026-01-01T00:00:00Z',
+      actualCost: 42,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isBlocked: false,
+      effectivePriority: 50,
+      unlocksUpgradeId: null,
+      unlocksTitle: null,
+    } satisfies UpgradeDto
+
+    const result = toUpsertInput(stale)
+
+    expect(result.purchasedDate).toBeNull()
+    expect(result.actualCost).toBeNull()
+    expect(result.status).toBe(UpgradeStatus.Idea)
+  })
+
+  it('preserves purchase details on a genuinely purchased row', () => {
+    const purchased = {
+      id: 1,
+      title: 'Bench',
+      description: null,
+      category: UpgradeCategory.Gym,
+      priority: 50,
+      estimatedCost: 300,
+      status: UpgradeStatus.Purchased,
+      notes: null,
+      productLink: null,
+      prerequisiteUpgradeId: null,
+      prerequisiteTitle: null,
+      purchasedDate: '2026-01-01T00:00:00Z',
+      actualCost: 275,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isBlocked: false,
+      effectivePriority: 50,
+      unlocksUpgradeId: null,
+      unlocksTitle: null,
+    } satisfies UpgradeDto
+
+    const result = toUpsertInput(purchased)
+
+    expect(result.purchasedDate).toBe('2026-01-01T00:00:00Z')
+    expect(result.actualCost).toBe(275)
+  })
+
   it('drops the fields the server owns', () => {
     const dto: UpgradeDto = {
       id: 7,

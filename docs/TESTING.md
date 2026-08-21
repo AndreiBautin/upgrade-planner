@@ -1,11 +1,11 @@
 # Testing
 
-**175 tests. 134 xUnit on the API, 41 Vitest on the client.** Before
+**177 tests. 134 xUnit on the API, 43 Vitest on the client.** Before
 productionization there were zero — no test project, no runner, nothing.
 
 ```bash
 dotnet test UpgradePlanner.sln -c Release   # 134 passed
-cd client && npm test                       # 41 passed
+cd client && npm test                       # 43 passed
 ```
 
 No coverage number is reported here, and none is chased. Chasing a percentage

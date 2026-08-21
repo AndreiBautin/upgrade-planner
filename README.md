@@ -101,7 +101,7 @@ risks that remain.
 
 ## Testing
 
-**175 tests** (134 xUnit, 41 Vitest), up from zero. Against real in-memory
+**177 tests** (134 xUnit, 43 Vitest), up from zero. Against real in-memory
 SQLite, not a fake provider that ignores the constraints worth testing.
 
 The personal-data scans on the demo fixture were verified by injecting an email,
@@ -151,6 +151,13 @@ configuration to start. The database file is created and migrated on first run.
 ```bash
 cd server/UpgradePlanner.Api
 DEMO_MODE=true dotnet run --launch-profile http
+```
+
+In PowerShell, set the variable first — the `VAR=value cmd` prefix is shell
+syntax that PowerShell does not have:
+
+```powershell
+$env:DEMO_MODE='true'; dotnet run --launch-profile http
 ```
 
 Demo mode uses its own database file (`demo.db`) and ignores the configured

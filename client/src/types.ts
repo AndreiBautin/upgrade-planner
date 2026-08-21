@@ -95,18 +95,34 @@ export interface UpsertUpgradeInput {
   actualCost: number | null
 }
 
+/**
+ * Turns a server DTO back into an editable input.
+ *
+ * The result is passed through {@link withStatus}, which matters for rows
+ * written before the API enforced state coherence: a row can still hold a
+ * purchase date while its status is "Idea". Those fields are hidden in the UI
+ * whenever the status is not Purchased, so submitting the stale value would fail
+ * validation with an error whose cause is literally invisible on screen.
+ *
+ * Normalising here rather than in each page covers every call site at once —
+ * the detail form, the dashboard's "mark purchased", and the drag-to-reorder
+ * PUT, which would otherwise be rejected for a field the user never touched.
+ */
 export function toUpsertInput(u: UpgradeDto): UpsertUpgradeInput {
-  return {
-    title: u.title,
-    description: u.description,
-    category: u.category,
-    priority: u.priority,
-    estimatedCost: u.estimatedCost,
-    status: u.status,
-    notes: u.notes,
-    productLink: u.productLink,
-    prerequisiteUpgradeId: u.prerequisiteUpgradeId,
-    purchasedDate: u.purchasedDate,
-    actualCost: u.actualCost,
-  }
+  return withStatus(
+    {
+      title: u.title,
+      description: u.description,
+      category: u.category,
+      priority: u.priority,
+      estimatedCost: u.estimatedCost,
+      status: u.status,
+      notes: u.notes,
+      productLink: u.productLink,
+      prerequisiteUpgradeId: u.prerequisiteUpgradeId,
+      purchasedDate: u.purchasedDate,
+      actualCost: u.actualCost,
+    },
+    u.status,
+  )
 }

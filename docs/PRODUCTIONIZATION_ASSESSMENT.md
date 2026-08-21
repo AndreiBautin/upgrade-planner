@@ -108,6 +108,16 @@ Core ships with. Nothing below recommends imposing one.
 | W12 | **No health endpoint.** A PaaS host has nothing to probe and no way to distinguish "cold-starting" from "dead". | Undiagnosable outages | **Low** |
 | W13 | **No CI.** Nothing runs on push. | Regressions ship | **Medium** |
 | W14 | `GetById` loads the entire table to answer a single-row query (it needs the full set for propagation, but not for the 404 check). | Irrelevant at this scale; would matter at 10⁴ rows | **Low** |
+| W15 | **`AppDbContext.TouchTimestamps` overwrote `CreatedAt`/`UpdatedAt` on every insert**, unconditionally. Found while implementing the fixture: the existing seeder's `now.AddDays(-20)` backdating was being silently discarded, so every "historical" row claimed to have been created at seed time. | Demo history collapses to "five seconds ago"; any caller-supplied timestamp is silently lost | **Medium** |
+| W16 | **An item cannot be dragged to the last position.** `computeDropPriority` treats a drop as "insert before the target", and the only drop targets are existing rows — so there is no gesture for the tail, and the `prev && !next` branch is unreachable. Found by writing the test. | Minor UX gap in an existing feature | **Low** |
+
+W15 and W16 were found during implementation rather than during the initial
+read — W15 by writing a fixture with backdated history and watching it not
+persist, W16 by writing a test whose expectation turned out to be wrong about the
+code rather than the code being wrong. W15 is fixed (timestamps are now filled
+only when unset). W16 is **not** fixed: changing drag semantics is a product
+decision, not a productionization one, so it is recorded as a known property in
+`reorder.test.ts` and in `docs/TESTING.md` instead.
 
 ## 6. Security findings
 

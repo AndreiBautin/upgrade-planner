@@ -23,16 +23,18 @@ services:
         value: "true"
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
-      # MUST be set to the deployed frontend origin, with no trailing path.
-      # For a GitHub Pages project site that is https://<user>.github.io
-      # (the origin only - Pages serves the app under /<repo>/, but CORS matches
-      # on origin, not path).
+      # The deployed frontend's origin. Origin only - Pages serves the app under
+      # /<repo>/, but CORS matches on origin, not path.
       #
-      # Left unset here on purpose: the value depends on the GitHub username, so
-      # it is set in the Render dashboard rather than committed with a
-      # placeholder that looks configured and is not.
+      # Committed as a plain value rather than `sync: false`. It is a public URL,
+      # not a secret, and it is already visible throughout this public
+      # repository. `sync: false` only prompts during the *initial* blueprint
+      # creation, so skipping that one prompt left the service silently falling
+      # back to localhost - the whole API worked while every browser request from
+      # the real frontend was blocked. Infrastructure that is knowable belongs in
+      # the file, where it deploys itself and cannot be missed.
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://andreibautin.github.io
       # BUILD_SHA is deliberately not listed. Render sets RENDER_GIT_COMMIT on
       # every deploy, and AppOptions falls back to it, so GET /health reports the
       # real commit with nothing to configure and nothing to forget.

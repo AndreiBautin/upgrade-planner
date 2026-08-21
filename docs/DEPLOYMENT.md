@@ -119,11 +119,20 @@ already selected, so steps 1–3 below collapse into signing in.
 3. **New ➜ Blueprint**, pick the `upgrade-planner` repository, `master` branch.
    Render reads `render.yaml` and proposes a web service called
    `upgrade-planner-api` on the **Free** plan.
-4. It will prompt for the one variable marked `sync: false`:
+4. Nothing to fill in. Every environment variable is committed in `render.yaml`,
+   including `ALLOWED_ORIGINS`.
 
-   | Key | Value |
-   | --- | --- |
-   | `ALLOWED_ORIGINS` | `https://andreibautin.github.io` |
+   That was not the original design, and the change is worth knowing about.
+   `ALLOWED_ORIGINS` was first declared `sync: false`, which prompts **only during
+   the initial blueprint creation**. Skipping that single prompt produced the most
+   confusing failure available: the service deployed, `/health` returned green,
+   the fixture seeded, and `curl` worked perfectly — while every browser request
+   from the real frontend was silently blocked, because the API had fallen back to
+   allowing `http://localhost:5176`. Nothing looked broken from the server side.
+
+   A public URL is not a secret, and this one is already visible throughout a
+   public repository. It now lives in the file, where it deploys itself and cannot
+   be skipped.
 
    **Origin only — no path, no trailing slash.** CORS matches on origin, so even
    though the app is served under `/upgrade-planner/`, the origin is the bare
@@ -170,7 +179,7 @@ environment actually sets:
 | --- | --- | --- |
 | `DEMO_MODE` | `true` | `render.yaml` |
 | `ASPNETCORE_ENVIRONMENT` | `Production` | `render.yaml` |
-| `ALLOWED_ORIGINS` | `https://andreibautin.github.io` | Render dashboard (`sync: false`) |
+| `ALLOWED_ORIGINS` | `https://andreibautin.github.io` | `render.yaml` |
 | `BUILD_SHA` | *not set* — falls back to `RENDER_GIT_COMMIT`, which Render sets on every deploy | nothing to configure |
 | `PORT` | assigned automatically | Render |
 
@@ -246,7 +255,7 @@ page would satisfy neither.
 | --- | --- | --- |
 | Page loads but shows *"Could not reach the API"* | `VITE_API_BASE_URL` not set, or the Render service is asleep | Set the repository variable and re-run the deploy; if set, wait ~1 min for the cold start |
 | First load takes ~60 seconds | Render free instance spinning up from idle | Expected. The UI shows a cold-start notice rather than a dead spinner |
-| Browser console: *blocked by CORS policy* | `ALLOWED_ORIGINS` missing, wrong, or includes a path | Set it to `https://andreibautin.github.io` — origin only. Check the Render logs for the startup warning |
+| Browser console: *blocked by CORS policy*, while `curl` and `/health` work fine | `ALLOWED_ORIGINS` missing or wrong, so the API fell back to allowing `http://localhost:5176` | Confirm with `curl -sI <api>/api/upgrades -H "Origin: https://andreibautin.github.io"` and look for `access-control-allow-origin`. It is set in `render.yaml`; if the service predates that, re-sync the blueprint or set it in the dashboard. The startup log says so explicitly |
 | Every asset 404s | `VITE_BASE_PATH` did not reach the build | CI asserts `/upgrade-planner/assets/` appears in `dist/index.html`; check that step |
 | Deep links 404 with a *Pages* error page (not the app) | `dist/404.html` missing | The build emits it; CI asserts it exists |
 | Site shows an old version | Pages CDN cache, or the deploy did not run | Check `gh run list`; hard-reload |

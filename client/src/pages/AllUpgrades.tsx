@@ -5,27 +5,9 @@ import { CATEGORY_LABELS, STATUS_LABELS, toUpsertInput, UpgradeCategory, type Up
 import { StatusPill, BlockedPill } from '../components/StatusPill'
 import { CategoryTag } from '../components/CategoryTag'
 import { formatCost, formatDate } from '../format'
+import { computeDropPriority } from '../reorder'
 
 type SortKey = 'priority' | 'cost' | 'title' | 'status' | 'purchasedDate'
-
-function computeDropPriority(draggedId: number, targetId: number, orderedList: UpgradeDto[]): number {
-  const withoutDragged = orderedList.filter((u) => u.id !== draggedId)
-  const targetIndex = withoutDragged.findIndex((u) => u.id === targetId)
-  const prev = withoutDragged[targetIndex - 1]
-  const next = withoutDragged[targetIndex]
-
-  let priority: number
-  if (prev && next) {
-    priority = Math.round((prev.priority + next.priority) / 2)
-  } else if (!prev && next) {
-    priority = next.priority + 1
-  } else if (prev && !next) {
-    priority = prev.priority - 1
-  } else {
-    priority = 50
-  }
-  return Math.max(1, Math.min(100, priority))
-}
 
 export function AllUpgrades() {
   const navigate = useNavigate()

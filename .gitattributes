@@ -1,0 +1,14 @@
+# The author develops on Windows; CI and the deployment containers run on Linux.
+# Without this, git checks files out with CRLF locally and LF in CI, so any
+# formatting or diff-sensitive check passes in one place and fails in the other -
+# which is worse than having no check at all.
+* text=auto eol=lf
+
+# Binary, never touched.
+*.png binary
+*.ico binary
+*.db binary
+
+# Windows needs CRLF to run these at all.
+*.bat text eol=crlf
+*.cmd text eol=crlf

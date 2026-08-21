@@ -1,15 +1,38 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { onSlowRequest } from '../api'
+import { config } from '../config'
 
-const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true'
+/**
+ * Tells the visitor the server is waking up rather than dead.
+ *
+ * The demo API runs on a free instance that spins down after 15 minutes idle and
+ * takes up to a minute to start. Saying so is the difference between "the free
+ * tier is doing its thing" and "this person's project is broken".
+ */
+function ColdStartNotice() {
+  const [isSlow, setIsSlow] = useState(false)
+
+  useEffect(() => onSlowRequest(setIsSlow), [])
+
+  if (!isSlow) return null
+
+  return (
+    <div className="cold-start-notice" role="status">
+      Waking the API up — the free instance sleeps after 15 minutes idle, so the first request can take up to a minute.
+    </div>
+  )
+}
 
 export function Layout() {
   return (
     <>
-      {isDemoMode && (
+      {config.demoMode && (
         <div className="demo-banner">
-          This is a public demo with fake, auto-resetting data — not connected to the author's real instance.
+          Public demo. The data is generated and disposable — nothing here is connected to the author's real instance.
         </div>
       )}
+      <ColdStartNotice />
       <header className="app-nav">
         <span className="brand">Upgrade Planner</span>
         <nav>
@@ -27,6 +50,13 @@ export function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <footer className="app-footer">
+        <span>Upgrade Planner</span>
+        {/* Ties the page a reviewer is looking at back to a specific commit. */}
+        <span className="build-tag" title="Build this page was served from">
+          build {config.buildSha}
+        </span>
+      </footer>
     </>
   )
 }

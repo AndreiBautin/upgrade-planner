@@ -34,6 +34,31 @@ export const STATUS_LABELS: Record<UpgradeStatus, string> = {
   [UpgradeStatus.Cancelled]: 'Cancelled',
 }
 
+/**
+ * The API now rejects enum values outside the declared set, but rows written
+ * before that validation existed can still hold one. Looking a label up through
+ * these functions turns such a row into a visible "Unknown" instead of an empty
+ * tag and a `class="pill undefined"`.
+ */
+export function categoryLabel(category: UpgradeCategory): string {
+  return CATEGORY_LABELS[category] ?? 'Unknown'
+}
+
+export function statusLabel(status: UpgradeStatus): string {
+  return STATUS_LABELS[status] ?? 'Unknown'
+}
+
+/**
+ * Purchase details only belong on a purchased upgrade — the API rejects the
+ * combination outright. Routing every status change through here means a form
+ * cannot submit a leftover purchase date on an item moved back to "Idea".
+ */
+export function withStatus(input: UpsertUpgradeInput, status: UpgradeStatus): UpsertUpgradeInput {
+  if (status === UpgradeStatus.Purchased) return { ...input, status }
+
+  return { ...input, status, purchasedDate: null, actualCost: null }
+}
+
 export interface UpgradeDto {
   id: number
   title: string

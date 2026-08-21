@@ -34,6 +34,19 @@ public class AppDbContext : DbContext
         return base.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Stamps <see cref="Upgrade.CreatedAt"/> and <see cref="Upgrade.UpdatedAt"/> at the
+    /// persistence boundary, so no call site can forget them.
+    /// </summary>
+    /// <remarks>
+    /// On insert the timestamps are only filled in when they are still
+    /// <see langword="default"/>. That leaves a caller that supplied its own
+    /// history — the demo fixture, which backdates rows relative to seed time —
+    /// with the dates it asked for, while an ordinary insert that sets nothing
+    /// still cannot end up with a zero timestamp. Updates always re-stamp
+    /// <see cref="Upgrade.UpdatedAt"/>: "when did this last change" is the
+    /// database's answer to give, not the caller's.
+    /// </remarks>
     private void TouchTimestamps()
     {
         var now = DateTime.UtcNow;
@@ -41,8 +54,8 @@ public class AppDbContext : DbContext
         {
             if (entry.State == EntityState.Added)
             {
-                entry.Entity.CreatedAt = now;
-                entry.Entity.UpdatedAt = now;
+                if (entry.Entity.CreatedAt == default) entry.Entity.CreatedAt = now;
+                if (entry.Entity.UpdatedAt == default) entry.Entity.UpdatedAt = now;
             }
             else if (entry.State == EntityState.Modified)
             {

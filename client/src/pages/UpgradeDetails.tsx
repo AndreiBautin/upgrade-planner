@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { deleteUpgrade, listUpgrades, updateUpgrade } from '../api'
-import { CATEGORY_LABELS, STATUS_LABELS, UpgradeCategory, type UpgradeDto, UpgradeStatus, type UpsertUpgradeInput } from '../types'
+import { CATEGORY_LABELS, STATUS_LABELS, UpgradeCategory, type UpgradeDto, UpgradeStatus, type UpsertUpgradeInput, withStatus } from '../types'
 import { StatusPill, BlockedPill } from '../components/StatusPill'
 import { formatCost } from '../format'
 
@@ -107,6 +107,17 @@ export function UpgradeDetails() {
     setForm((f) => (f ? { ...f, [key]: value } : f))
   }
 
+  /**
+   * Status is not updated through `update` because it is not an independent
+   * field: the API rejects a purchase date or an actual cost on anything that is
+   * not Purchased. Moving an item back to "Idea" therefore has to clear those,
+   * or the next save fails with a validation error the user cannot see the cause
+   * of — the inputs holding the offending values are hidden at that point.
+   */
+  function setStatus(status: UpgradeStatus) {
+    setForm((f) => (f ? withStatus(f, status) : f))
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -159,7 +170,7 @@ export function UpgradeDetails() {
             <select
               id="status"
               value={form.status}
-              onChange={(e) => update('status', Number(e.target.value) as UpgradeStatus)}
+              onChange={(e) => setStatus(Number(e.target.value) as UpgradeStatus)}
             >
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>

@@ -462,3 +462,37 @@ textarea { resize: vertical; min-height: 70px; }
   color: var(--status-ready);
   font-weight: 600;
 }
+
+/* --- Productionization additions ------------------------------------------ */
+
+/* Shown while a request outlives SLOW_REQUEST_MS, which on the free hosting
+   tier means the API container is cold-starting rather than failing. */
+.cold-start-notice {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+
+/* A status value from before the API validated enum ranges. */
+.pill-unknown { color: var(--status-idea); background: var(--status-idea-bg); }
+
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  max-width: 900px;
+  margin: 32px auto 24px;
+  padding: 12px 24px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.build-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+}

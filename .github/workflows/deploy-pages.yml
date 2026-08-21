@@ -1,0 +1,89 @@
+name: Deploy client to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Deployment authenticates with the workflow's built-in token. There is no
+# secret to create, rotate, or leak - which is most of why Pages was chosen over
+# a provider that needs an API key.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        env:
+          # A Pages *project* site is served from /<repo>/. This single value
+          # feeds Vite's asset URLs and, through import.meta.env.BASE_URL, the
+          # router's basename - see client/src/config.ts.
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_DEMO_MODE: 'true'
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_BUILD_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$VITE_API_BASE_URL" ]; then
+            echo "::warning::Repository variable VITE_API_BASE_URL is not set. The deployed page will have no API to talk to. Set it to the Render service URL."
+          fi
+          npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: client/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      # A green deploy step means an upload succeeded. This means the site
+      # answered, and answered with the app rather than a Pages error page.
+      - name: Smoke test the live site
+        run: |
+          URL="${{ steps.deployment.outputs.page_url }}"
+          echo "Smoke testing $URL"
+          for i in $(seq 1 10); do
+            BODY=$(curl -sSL --max-time 20 "$URL" || true)
+            if printf '%s' "$BODY" | grep -q '<title>Upgrade Planner</title>'; then
+              echo "Title found."
+              printf '%s' "$BODY" | grep -q 'assets/index-.*\.js' \
+                || { echo "::error::Page served but references no JS bundle."; exit 1; }
+              echo "Smoke test passed."
+              exit 0
+            fi
+            echo "Attempt $i: not ready yet, waiting..."
+            sleep 10
+          done
+          echo "::error::Live site did not serve the app within the timeout."
+          exit 1

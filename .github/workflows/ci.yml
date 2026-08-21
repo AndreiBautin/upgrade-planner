@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API — build, test, audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # --locked-mode would be the equivalent of a frozen lockfile, but this
+      # repository has no NuGet lock file, so restore is pinned by the exact
+      # versions in the csproj instead. NuGetAudit is on in the csproj at
+      # severity "high", so a newly disclosed advisory fails this step.
+      - name: Restore
+        run: dotnet restore UpgradePlanner.sln
+
+      - name: Build
+        run: dotnet build UpgradePlanner.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test UpgradePlanner.sln -c Release --no-build --verbosity normal
+
+      # Gated at high on purpose. Failing on low-severity advisories in
+      # build-time transitive packages trains people to ignore the job, and an
+      # ignored gate is not a gate.
+      - name: Dependency audit
+        run: |
+          dotnet list UpgradePlanner.sln package --vulnerable --include-transitive 2>&1 | tee audit.txt
+          # Matches a findings row: "   > Package  Version  High  https://..."
+          # Verified against both a real advisory row and a low-severity row, so
+          # it neither misses a high nor fires on noise.
+          if grep -qE '^[[:space:]]*>[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+(High|Critical)[[:space:]]' audit.txt; then
+            echo "::error::High or critical severity vulnerability found in NuGet dependencies."
+            exit 1
+          fi
+
+      # Proves migrations apply to an empty database and the demo seeds itself,
+      # which is exactly what happens on every Render cold start.
+      - name: Migrate and seed from clean
+        env:
+          DEMO_MODE: 'true'
+        run: |
+          cd server/UpgradePlanner.Api
+          timeout 60s dotnet run -c Release --no-build --no-launch-profile --urls http://localhost:5131 &
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:5131/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://localhost:5131/health | tee health.json
+          COUNT=$(curl -sf http://localhost:5131/api/upgrades | grep -o '"id":' | wc -l)
+          echo "Seeded rows: $COUNT"
+          test "$COUNT" -gt 0 || { echo "::error::Demo seed produced no rows."; exit 1; }
+
+  client:
+    name: Client — build, test, lint, audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      # `npm ci` is the frozen-lockfile install: it fails on drift between
+      # package.json and package-lock.json rather than silently resolving
+      # something the lockfile does not describe.
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      # Every configuration that ships gets built. The demo build differs from
+      # the default in base path and mode, and a failure that only appears under
+      # the demo config must not first surface at deploy time.
+      - name: Build (default configuration)
+        run: npm run build
+
+      - name: Build (demo configuration, as deployed)
+        env:
+          VITE_BASE_PATH: /upgrade-planner/
+          VITE_DEMO_MODE: 'true'
+          VITE_API_BASE_URL: https://upgrade-planner-api.onrender.com
+        run: npm run build
+
+      - name: Check the base path actually reached the output
+        env:
+          VITE_BASE_PATH: /upgrade-planner/
+        run: |
+          grep -q '/upgrade-planner/assets/' dist/index.html \
+            || { echo "::error::Built index.html does not reference the project base path."; exit 1; }
+          test -f dist/404.html \
+            || { echo "::error::SPA fallback dist/404.html was not emitted."; exit 1; }
+
+  secrets:
+    name: Secret scan (full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # gitleaks needs the whole history: a credential removed from the
+          # working tree is still a leaked credential if it sits in an old commit.
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

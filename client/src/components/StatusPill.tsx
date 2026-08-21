@@ -1,4 +1,4 @@
-import { STATUS_LABELS, UpgradeStatus } from '../types'
+import { statusLabel, UpgradeStatus } from '../types'
 
 const CLASS_BY_STATUS: Record<UpgradeStatus, string> = {
   [UpgradeStatus.Idea]: 'pill-idea',
@@ -9,7 +9,11 @@ const CLASS_BY_STATUS: Record<UpgradeStatus, string> = {
 }
 
 export function StatusPill({ status }: { status: UpgradeStatus }) {
-  return <span className={`pill ${CLASS_BY_STATUS[status]}`}>{STATUS_LABELS[status]}</span>
+  // A row stored before the API validated enum ranges can still carry a value
+  // outside the set. Falling back keeps the class name from becoming
+  // "pill undefined" and the label from rendering empty.
+  const className = CLASS_BY_STATUS[status] ?? 'pill-unknown'
+  return <span className={`pill ${className}`}>{statusLabel(status)}</span>
 }
 
 export function BlockedPill() {

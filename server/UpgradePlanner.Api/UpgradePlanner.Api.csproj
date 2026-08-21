@@ -4,6 +4,10 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Surface NuGet advisories at build time, not only when someone remembers
+         to audit the dependency tree by hand. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditLevel>high</NuGetAuditLevel>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +17,12 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
+    <!-- Pinned explicitly, above the 2.1.10 that EF Core 9.0.9 resolves on its own.
+         Versions up to and including 2.1.11 bundle a SQLite older than 3.50.2 and
+         are affected by CVE-2025-6965 (GHSA-2m69-gcr7-jv3q, high severity). Drop
+         this line only once the transitive resolution reaches 2.1.12 or newer by
+         itself; the vulnerability audit in CI is what decides. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
   </ItemGroup>
 
 </Project>

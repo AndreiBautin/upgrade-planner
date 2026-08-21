@@ -1,3 +1,11 @@
+# Render blueprint for the public demo API.
+#
+# The free instance type has an ephemeral filesystem and spins down after 15
+# minutes without traffic. Both are deliberate here: the SQLite file is recreated
+# on every cold start, so the demo reseeds itself and any vandalism disappears
+# without a scheduled job or a reset endpoint to protect.
+#
+# See docs/DEPLOYMENT.md for why Render, and what was rejected.
 services:
   - type: web
     name: upgrade-planner-api
@@ -6,13 +14,25 @@ services:
     region: oregon
     dockerfilePath: ./server/UpgradePlanner.Api/Dockerfile
     dockerContext: ./server/UpgradePlanner.Api
+    healthCheckPath: /health
     envVars:
-      - key: SeedDemoData
+      # Seeds generated fixture data into an empty database at startup, and
+      # forces the connection string to demo.db so a demo seed can never reach
+      # real data. See server/UpgradePlanner.Api/Configuration/AppOptions.cs.
+      - key: DEMO_MODE
         value: "true"
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
-      # Update this after your Vercel deploy exists, to your actual
-      # Vercel URL (e.g. https://upgrade-planner.vercel.app). Comma-separate
-      # multiple origins if needed.
-      - key: AllowedOrigins
-        value: https://REPLACE-WITH-YOUR-VERCEL-URL.vercel.app
+      # MUST be set to the deployed frontend origin, with no trailing path.
+      # For a GitHub Pages project site that is https://<user>.github.io
+      # (the origin only - Pages serves the app under /<repo>/, but CORS matches
+      # on origin, not path).
+      #
+      # Left unset here on purpose: the value depends on the GitHub username, so
+      # it is set in the Render dashboard rather than committed with a
+      # placeholder that looks configured and is not.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Injected so GET /health can report which commit is running.
+      - key: BUILD_SHA
+        value: ""

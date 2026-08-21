@@ -72,8 +72,29 @@ public sealed record AppOptions
             DemoMode = demoMode,
             AllowedOrigins = ParseOrigins(configuration["ALLOWED_ORIGINS"], warnings),
             ConnectionString = connectionString,
-            BuildSha = string.IsNullOrWhiteSpace(configuration["BUILD_SHA"]) ? "unknown" : configuration["BUILD_SHA"]!,
+            BuildSha = ResolveBuildSha(configuration),
         };
+    }
+
+    /// <summary>
+    /// The commit this instance is running, preferring an explicitly supplied
+    /// value and otherwise taking whatever the host already knows.
+    /// </summary>
+    /// <remarks>
+    /// <c>RENDER_GIT_COMMIT</c> is set automatically on every Render deploy, so
+    /// the fallback means <c>/health</c> reports the real commit with no
+    /// configuration at all — and cannot silently degrade to "unknown" because
+    /// somebody forgot to wire a variable through.
+    /// </remarks>
+    private static string ResolveBuildSha(IConfiguration configuration)
+    {
+        foreach (var key in (string[])["BUILD_SHA", "RENDER_GIT_COMMIT"])
+        {
+            var value = configuration[key];
+            if (!string.IsNullOrWhiteSpace(value)) return value.Trim();
+        }
+
+        return "unknown";
     }
 
     /// <summary>

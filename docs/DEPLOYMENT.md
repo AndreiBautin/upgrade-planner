@@ -164,7 +164,7 @@ environment actually sets:
 | `DEMO_MODE` | `true` | `render.yaml` |
 | `ASPNETCORE_ENVIRONMENT` | `Production` | `render.yaml` |
 | `ALLOWED_ORIGINS` | `https://andreibautin.github.io` | Render dashboard (`sync: false`) |
-| `BUILD_SHA` | commit sha | `render.yaml` / dashboard |
+| `BUILD_SHA` | *not set* — falls back to `RENDER_GIT_COMMIT`, which Render sets on every deploy | nothing to configure |
 | `PORT` | assigned automatically | Render |
 
 `ConnectionStrings__Default` is deliberately **not** set: demo mode ignores it and

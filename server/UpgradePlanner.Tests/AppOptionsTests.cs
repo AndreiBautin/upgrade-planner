@@ -189,6 +189,41 @@ public class AppOptionsTests
         Assert.Equal("abc1234", Parse(new() { ["BUILD_SHA"] = "abc1234" }).BuildSha);
     }
 
+    [Fact]
+    public void Build_sha_falls_back_to_the_commit_the_host_already_knows()
+    {
+        // Render sets RENDER_GIT_COMMIT on every deploy. Using it means /health
+        // reports the real commit with nothing to configure - and so cannot
+        // degrade to "unknown" because a variable was never wired through.
+        Assert.Equal("def5678", Parse(new() { ["RENDER_GIT_COMMIT"] = "def5678" }).BuildSha);
+    }
+
+    [Fact]
+    public void An_explicit_build_sha_wins_over_the_hosts_value()
+    {
+        var options = Parse(new()
+        {
+            ["BUILD_SHA"] = "explicit",
+            ["RENDER_GIT_COMMIT"] = "from-host",
+        });
+
+        Assert.Equal("explicit", options.BuildSha);
+    }
+
+    [Fact]
+    public void A_blank_build_sha_falls_through_rather_than_shadowing_the_host()
+    {
+        // render.yaml previously set BUILD_SHA to "", which would otherwise mask
+        // the host's value and report "unknown" on a real deploy.
+        var options = Parse(new()
+        {
+            ["BUILD_SHA"] = "   ",
+            ["RENDER_GIT_COMMIT"] = "from-host",
+        });
+
+        Assert.Equal("from-host", options.BuildSha);
+    }
+
     // --- Totality --------------------------------------------------------------
 
     [Fact]

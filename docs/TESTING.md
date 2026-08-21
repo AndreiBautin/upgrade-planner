@@ -1,10 +1,10 @@
 # Testing
 
-**177 tests. 134 xUnit on the API, 43 Vitest on the client.** Before
+**180 tests. 137 xUnit on the API, 43 Vitest on the client.** Before
 productionization there were zero — no test project, no runner, nothing.
 
 ```bash
-dotnet test UpgradePlanner.sln -c Release   # 134 passed
+dotnet test UpgradePlanner.sln -c Release   # 137 passed
 cd client && npm test                       # 43 passed
 ```
 

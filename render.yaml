@@ -33,6 +33,6 @@ services:
       # placeholder that looks configured and is not.
       - key: ALLOWED_ORIGINS
         sync: false
-      # Injected so GET /health can report which commit is running.
-      - key: BUILD_SHA
-        value: ""
+      # BUILD_SHA is deliberately not listed. Render sets RENDER_GIT_COMMIT on
+      # every deploy, and AppOptions falls back to it, so GET /health reports the
+      # real commit with nothing to configure and nothing to forget.

@@ -47,11 +47,28 @@ until the host's disk filled.
 Fixed:
 
 - **Rate limiting** (`Program.cs`): a fixed 120-request-per-minute window
-  partitioned by client address, returning 429. Verified: 130 rapid requests
-  produced 109 × 200 and 21 × 429.
-- **64 KB request body cap** (`Program.cs`, Kestrel limits). Verified: a 2 MB
-  body returns **413**, not 500 — Kestrel's typed `BadHttpRequestException` is
-  mapped by its own status code rather than swallowed as a server error.
+  partitioned by client address, returning 429.
+
+  **This shipped broken and had to be fixed against the live deployment.** The
+  partition key was the entire `X-Forwarded-For` header. Locally that is fine —
+  there is no proxy, the header is absent, the socket address is used, and 130
+  rapid requests produced 21 × 429. Behind Render's edge the header is a chain
+  (`client, proxy, …`) containing a hop that varies between requests, so every
+  request landed in its own partition and the limiter never fired: **200
+  concurrent requests against the deployed API returned 200, every time.** The
+  key is now the leftmost entry of the chain, which is the originating client.
+  `ClientKey` is a pure function with 10 tests, the load-bearing one being that
+  the key stays **stable when only the proxy hops change**.
+
+  The general lesson: a mitigation verified only on a developer's machine can be
+  inert in the environment it exists to protect, and look identical either way.
+
+- **64 KB request body cap** (`Program.cs`, Kestrel limits). A 2 MB body is
+  rejected. The status differs by environment: **413 locally**, where Kestrel's
+  typed `BadHttpRequestException` is mapped by its own status code rather than
+  swallowed as a 500; **400 in production**, because Render's edge rejects the
+  oversized body before it reaches the app. Rejected either way, but the
+  documented status is only accurate for a direct connection.
 - **Field length limits** — see S2.
 - **Self-healing data.** The demo runs on an instance with an ephemeral
   filesystem that spins down after 15 minutes idle, so the database is recreated
@@ -65,10 +82,12 @@ either authentication (which the app does not have) or a read-only demo (which
 would not show the app working). Nothing of value is at risk — the data is fake
 by construction and the container is disposable.
 
-The rate limiter partitions on `X-Forwarded-For` when present. **That header can
-be spoofed.** It is used because behind a proxy the socket address is the
-proxy's, making the limit global instead of per-client. It is a fairness control,
-not a security control, and is not presented as one.
+The rate limiter partitions on the leftmost entry of `X-Forwarded-For` when
+present. **That header is client-supplied and can be spoofed**, so a determined
+caller can evade the limit by varying it. It is used because behind a proxy the
+socket address is the proxy's, which would make the limit global instead of
+per-client. It is a fairness control, not a security control, and is not
+presented as one.
 
 ### S2 — Missing validation at the trust boundary — **High** — fixed
 

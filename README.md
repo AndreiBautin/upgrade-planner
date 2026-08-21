@@ -101,7 +101,7 @@ risks that remain.
 
 ## Testing
 
-**180 tests** (137 xUnit, 43 Vitest), up from zero. Against real in-memory
+**190 tests** (147 xUnit, 43 Vitest), up from zero. Against real in-memory
 SQLite, not a fake provider that ignores the constraints worth testing.
 
 The personal-data scans on the demo fixture were verified by injecting an email,

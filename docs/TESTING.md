@@ -1,10 +1,10 @@
 # Testing
 
-**180 tests. 137 xUnit on the API, 43 Vitest on the client.** Before
+**190 tests. 147 xUnit on the API, 43 Vitest on the client.** Before
 productionization there were zero — no test project, no runner, nothing.
 
 ```bash
-dotnet test UpgradePlanner.sln -c Release   # 137 passed
+dotnet test UpgradePlanner.sln -c Release   # 147 passed
 cd client && npm test                       # 43 passed
 ```
 
@@ -111,12 +111,35 @@ longer test count.
 | Not tested | Why |
 | --- | --- |
 | **React component rendering** | No jsdom, no Testing Library. The components are thin: they fetch, map to a list, and render. The logic worth testing was *extracted* out of them — `reorder.ts`, `format.ts`, `withStatus` — and is tested directly. Adding a DOM test runner to assert that a `<span>` contains a title would test React, not this app. |
-| **The HTTP pipeline itself** — rate limiting, the 64 KB body cap, exception-to-status mapping | Verified by hand against a running instance (130 requests → 109×200 + 21×429; a 2 MB body → 413) and continuously by the CI smoke test. Not covered by `WebApplicationFactory`, because the composition root returns an exit code for the `--reset-demo-data` path, which an in-process test host cannot model cleanly. The cost of restructuring `Program.cs` to suit the harness outweighed the benefit. |
+| **The HTTP pipeline itself** — the 64 KB body cap, exception-to-status mapping | Verified by hand against a running instance and continuously by the CI smoke test. Not covered by `WebApplicationFactory`, because the composition root returns an exit code for the `--reset-demo-data` path, which an in-process test host cannot model cleanly. The cost of restructuring `Program.cs` to suit the harness outweighed the benefit. **This gap has already cost something once** — see below. |
 | **CORS behaviour** | `AllowedOrigins` *parsing* is tested thoroughly. Whether the browser then honours the header is ASP.NET Core's middleware and the browser's job, not this codebase's. |
 | **EF Core / the ORM** | Testing that `SaveChanges` saves is testing Microsoft's code. What *is* tested is the behaviour this repo adds on top: timestamp stamping, and that backdated history survives it. |
 | **`RecommendationEngine` performance** | It is O(n) over tens of rows. A benchmark would encode a number nobody will act on. Where it stops scaling is documented in [ARCHITECTURE.md](ARCHITECTURE.md) instead. |
 | **The deployed site, beyond a smoke test** | The CI smoke test asserts the live URL serves the app with a JS bundle. Full end-to-end browser automation against a free instance that cold-starts for ~60s would be slow and flaky for little added signal. |
 | **Concurrency** | SQLite serialises writes and the app has one user. Concurrency tests would assert behaviour the design does not promise. |
+
+## What that untested gap actually cost
+
+Rate limiting was in the "verified by hand, not unit-tested" column above. It was
+**inert in production for the first hours it was deployed**, and every local
+check said it worked.
+
+The partition key was the whole `X-Forwarded-For` header. With no proxy in front
+— i.e. on a developer's machine — the header is absent, the socket address is
+used, and 130 rapid requests produce 21 rejections. Behind Render's edge the
+header is a chain whose later hops vary per request, so every request got its own
+bucket. Two hundred concurrent requests against the live API returned `200` two
+hundred times.
+
+The fix was to extract the key into `ClientKey`, a pure function, and test the
+property that actually matters: **the key is stable when only the proxy hops
+change** (`The_key_is_stable_when_only_the_proxy_hops_change`). That is a
+one-line unit test which would have caught this before deployment, and no amount
+of local smoke testing would have.
+
+Ten tests now cover it. The moral is not "test everything" — it is that a
+mitigation whose behaviour *depends on the deployment environment* cannot be
+signed off from a laptop, and should be reduced to a pure function that can be.
 
 ## A known limitation the tests documented rather than hid
 

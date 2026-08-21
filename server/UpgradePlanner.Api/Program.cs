@@ -51,12 +51,13 @@ builder.Services.AddRateLimiter(limiter =>
     limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
             // Behind a proxy the socket address is the proxy's, so prefer the
-            // forwarded client address when one is present. This is a fairness
-            // control, not a security control - a header can be spoofed, and
-            // there is nothing behind it worth protecting with one.
-            partitionKey: context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                          ?? context.Connection.RemoteIpAddress?.ToString()
-                          ?? "unknown",
+            // forwarded client address when one is present. See ClientKey for why
+            // this must take the leftmost entry of the chain rather than the whole
+            // header - getting that wrong disables the limiter entirely, and does
+            // so invisibly, because locally there is no proxy to reveal it.
+            partitionKey: ClientKey.Resolve(
+                context.Request.Headers["X-Forwarded-For"].FirstOrDefault(),
+                context.Connection.RemoteIpAddress?.ToString()),
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 120,

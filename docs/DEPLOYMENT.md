@@ -106,6 +106,13 @@ Verified locally against a simulator that reproduces exactly this behaviour:
 
 `render.yaml` is committed, so Render configures the service from the repository.
 
+**One-click start:**
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AndreiBautin/upgrade-planner)
+
+That link redirects to `dashboard.render.com/blueprint/new` with this repository
+already selected, so steps 1–3 below collapse into signing in.
+
 1. Go to **https://render.com** and **Sign in with GitHub**. Free; it will not
    ask for a card.
 2. Authorize Render to read `AndreiBautin/upgrade-planner`.
